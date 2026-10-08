@@ -1,4 +1,5 @@
 import contextlib
+import re
 import nuke
 import nukescripts
 import ayon_api
@@ -278,6 +279,8 @@ class LoadBackdropNodes(load.LoaderPlugin):
         bdn["bdwidth"].setValue(bdwidth)
         bdn["bdheight"].setValue(bdheight)
 
+        # Nuke node names may only contain letters, digits and underscores
+        object_name = re.sub(r"[^A-Za-z0-9_]", "_", object_name)
         bdn.setName(object_name)
         bdn["label"].setValue(
             f"Version tracked frame: \n`{object_name}`\n\n"
