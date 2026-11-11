@@ -43,10 +43,12 @@ def detect_file_on_disk(
             "Cannot create Read node as the "
             f"file does not exist: `{k_eval}`"
         )
-    if k_eval is not None and project_dir is not None:
+    if project_dir:
         combined_relative_path = os.path.abspath(
             os.path.join(project_dir, k_eval)
         )
+    else:
+        combined_relative_path = os.path.abspath(k_eval)
     directory = os.path.dirname(k_eval)
     if directory and not os.path.isdir(directory):
         return None, 0, 0
@@ -98,7 +100,11 @@ def detect_file_on_disk(
                 lastframe = max(coll.indexes)
                 filepath = f"{coll.head}{'#' * coll.padding}{coll.tail}"
     # Convert to relative path if requested
-    if filepath and allow_relative and project_dir:
+    if not filepath:
+        log.warning("Could not detect a file sequence on disk for `%s`", k_eval)
+        return None, 0, 0
+
+    if allow_relative and project_dir:
         filepath = os.path.relpath(filepath, project_dir)
     filepath = filepath.replace('\\', '/')
 
@@ -124,13 +130,23 @@ def create_read_node(ndata, comp_start):
     return
 
 
+def _get_project_dir() -> str | None:
+    """Root project_directory if valid, else the current script's folder."""
+    knob = nuke.Root().knob('project_directory')
+    for value in (knob.getValue(), knob.evaluate()):
+        if value and os.path.isdir(value):
+            return value
+    script_path = nuke.Root().name()
+    if script_path and script_path != "Root":
+        return os.path.dirname(script_path)
+    return None
+
+
 def write_to_read(gn,
                   allow_relative=False):
 
     comp_start = nuke.Root().knob('first_frame').value()
-    project_dir = nuke.Root().knob('project_directory').getValue()
-    if not os.path.exists(project_dir):
-        project_dir = nuke.Root().knob('project_directory').evaluate()
+    project_dir = _get_project_dir()
 
     group_read_nodes = []
     with gn:
